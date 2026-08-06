@@ -1,38 +1,36 @@
-# KnightLog
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-**The fastest way to complete your site diary.**
+## Getting Started
 
-Site engineers record a short voice note at the end of the day.
-KnightLog turns it into a structured, dated site diary and exports a PDF.
+First, run the development server:
 
----
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## The problem
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Site diaries are contractual documents. They are also written from
-memory at the end of a twelve-hour shift, and gaps in the series are
-common. On a typical infrastructure project, a large share of
-legitimate change goes unrecovered because nobody wrote down what
-happened on a given day.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## What KnightLog does
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-- Capture events as they happen during the shift
-- Speak for 60 seconds at the end of the day
-- Entries sorted into weather, labour, plant, deliveries,
-  instructions, delays, work prevented, health & safety
-- Review, edit, submit
-- Export a branded PDF for the project record
+## Learn More
 
-## Status
+To learn more about Next.js, take a look at the following resources:
 
-Pre-release. In development.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Stack
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-Next.js · TypeScript · Tailwind · Supabase · Vercel
+## Deploy on Vercel
 
-## Licence
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-© KnightLog Solutions. All rights reserved.
-Not open source. No permission granted to copy, use or distribute.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Ground and surfaces */
+  --color-ground: #08170F;
+  --color-ground-2: #0D2419;
+  --color-bg: #F4F6F3;
+  --color-surface: #FFFFFF;
+  --color-line: #DBE0D8;
+  --color-line-soft: #E9EDE7;
+
+  /* Ink */
+  --color-ink: #14201A;
+  --color-muted: #6E7A72;
+
+  /* Brand */
+  --color-accent: #12503A;
+  --color-accent-soft: #DFEBE4;
+  --color-gold: #C9A227;
+
+  /* Signals */
+  --color-signal-amber: #B07A16;
+  --color-signal-amber-soft: #F9EDD3;
+  --color-signal-red: #C0453C;
+  --color-signal-red-soft: #F8E3E1;
+  --color-signal-green: #3F8A48;
+  --color-signal-green-soft: #E2F0E3;
+  --color-signal-blue: #2E6FA3;
+  --color-signal-blue-soft: #E1EDF5;
+
+  /* Type */
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  overscroll-behavior: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}
+
+/* Timestamps and recorded data always render in mono —
+   it signals "this is a logged fact", not prose. */
+.stamp {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
 }

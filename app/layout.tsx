@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { TabBar } from "@/components/layout/TabBar";
 
 // Display face — headings and page titles
 const bricolage = Bricolage_Grotesque({
@@ -50,7 +51,10 @@ export default function RootLayout({
       <body
         className={`${bricolage.variable} ${inter.variable} ${jetbrains.variable}`}
       >
-        {children}
+        <div className="mx-auto max-w-[520px] md:max-w-none md:pl-[248px]">
+          {children}
+        </div>
+        <TabBar />
       </body>
     </html>
   );

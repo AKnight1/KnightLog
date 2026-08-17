@@ -1,22 +1,53 @@
 import { Screen, PageTitle, GroupLabel, Group, Row } from "@/components/ui/Shell";
-import { PROJECT, USER } from "@/lib/mock";
+import { SignOutButton } from "@/components/auth/SignOutButton";
+import { createClient } from "@/lib/supabase/server";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: profile }, { data: project }] = await Promise.all([
+    user
+      ? supabase
+          .from("profiles")
+          .select("full_name, role")
+          .eq("id", user.id)
+          .single()
+      : Promise.resolve({ data: null }),
+    supabase.from("projects").select("name, contract, postcode").limit(1).single(),
+  ]);
+
   return (
     <Screen>
       <PageTitle title="Settings" sub="Account, project and preferences" />
 
       <GroupLabel>You</GroupLabel>
       <Group>
-        <Row title="Name" right={<span className="text-[15px] text-muted">{USER.name}</span>} />
-        <Row title="Role" right={<span className="text-[15px] text-muted capitalize">{USER.role}</span>} />
+        <Row
+          title="Name"
+          right={
+            <span className="text-[15px] text-muted">
+              {profile?.full_name || user?.email}
+            </span>
+          }
+        />
+        <Row
+          title="Role"
+          right={
+            <span className="text-[15px] text-muted capitalize">
+              {profile?.role ?? "—"}
+            </span>
+          }
+        />
       </Group>
 
       <GroupLabel>Project</GroupLabel>
       <Group>
-        <Row title="Project" sub={PROJECT.name} />
-        <Row title="Contract" sub={PROJECT.contract} />
-        <Row title="Site postcode" sub={PROJECT.postcode} />
+        <Row title="Project" sub={project?.name ?? "—"} />
+        <Row title="Contract" sub={project?.contract ?? "—"} />
+        <Row title="Site postcode" sub={project?.postcode ?? "—"} />
       </Group>
 
       <GroupLabel>Diary preferences</GroupLabel>
@@ -26,8 +57,14 @@ export default function SettingsPage() {
         <Row title="Daily reminder" sub="Off" right={<span className="text-[15px] text-muted">Off</span>} />
       </Group>
 
+      <GroupLabel>Account</GroupLabel>
+      <Group>
+        <SignOutButton />
+      </Group>
+
       <p className="mt-6 px-1 text-[12.5px] leading-relaxed text-muted">
-        Stage 1 — example data only. Nothing is saved yet.
+        Diary preferences aren&apos;t wired up yet — everything else on this
+        page is real.
       </p>
     </Screen>
   );

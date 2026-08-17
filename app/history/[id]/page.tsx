@@ -13,6 +13,13 @@ function prettyDate(iso: string) {
   });
 }
 
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default async function DiaryEntryPage({
   params,
 }: {
@@ -22,11 +29,40 @@ export default async function DiaryEntryPage({
   const supabase = await createClient();
   const { data: entry } = await supabase
     .from("diary_entries")
-    .select("id, day, progress, flags, reviewed, backdated_days, submitted_at")
+    .select(
+      "id, day, progress, flags, reviewed, backdated_days, submitted_at, author:profiles(full_name)",
+    )
     .eq("id", id)
     .single();
 
   if (!entry) notFound();
+
+  const { data: captures } = await supabase
+    .from("captures")
+    .select("id, body, photo_path, captured_at")
+    .eq("entry_id", entry.id)
+    .order("captured_at", { ascending: true });
+
+  const notes = (captures ?? []).filter((c) => !c.photo_path);
+  const photoPaths = (captures ?? [])
+    .map((c) => c.photo_path)
+    .filter((p): p is string => p !== null);
+
+  let photoUrls: Record<string, string> = {};
+  if (photoPaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("captures")
+      .createSignedUrls(photoPaths, 3600);
+    photoUrls = Object.fromEntries(
+      (signed ?? [])
+        .filter((s) => s.signedUrl)
+        .map((s) => [s.path, s.signedUrl]),
+    );
+  }
+
+  const authorName =
+    (entry.author as { full_name: string }[] | null)?.[0]?.full_name ??
+    "Unknown";
 
   return (
     <Screen>
@@ -39,7 +75,7 @@ export default async function DiaryEntryPage({
 
       <PageTitle
         title={prettyDate(entry.day)}
-        sub={entry.backdated_days > 0 ? "Backdated entry" : undefined}
+        sub={`${authorName}${entry.backdated_days > 0 ? " · Backdated entry" : ""}`}
       />
 
       {entry.flags.length > 0 && (
@@ -62,6 +98,44 @@ export default async function DiaryEntryPage({
           </p>
         </div>
       </Group>
+
+      {notes.length > 0 && (
+        <>
+          <GroupLabel>Site notes</GroupLabel>
+          <Group>
+            {notes.map((n) => (
+              <div
+                key={n.id}
+                className="flex gap-3 border-b border-line-soft px-4 py-3.5 last:border-b-0"
+              >
+                <span className="min-w-[42px] pt-px font-mono text-[12.5px] font-semibold text-muted">
+                  {formatTime(n.captured_at)}
+                </span>
+                <p className="flex-1 text-[14.5px] leading-snug">{n.body}</p>
+              </div>
+            ))}
+          </Group>
+        </>
+      )}
+
+      {photoPaths.length > 0 && (
+        <>
+          <GroupLabel>Photos</GroupLabel>
+          <div className="flex flex-wrap gap-2">
+            {photoPaths.map((path) =>
+              photoUrls[path] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={path}
+                  src={photoUrls[path]}
+                  alt="Site capture"
+                  className="h-24 w-24 rounded-lg object-cover"
+                />
+              ) : null,
+            )}
+          </div>
+        </>
+      )}
 
       <GroupLabel>Details</GroupLabel>
       <Group>
@@ -87,6 +161,13 @@ export default async function DiaryEntryPage({
           }
         />
       </Group>
+
+      <a
+        href={`/history/${entry.id}/pdf`}
+        className="mt-6 block w-full rounded-xl bg-accent py-4 text-center text-base font-bold text-white transition-transform active:scale-[0.985]"
+      >
+        Download PDF
+      </a>
     </Screen>
   );
 }

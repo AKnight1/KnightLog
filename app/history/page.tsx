@@ -17,7 +17,7 @@ export default async function HistoryPage() {
   const supabase = await createClient();
   const { data: entries } = await supabase
     .from("diary_entries")
-    .select("id, day, progress, flags, reviewed, backdated_days")
+    .select("id, day, progress, flags, reviewed, backdated_days, author:profiles(full_name)")
     .order("day", { ascending: false });
 
   const list = entries ?? [];
@@ -49,6 +49,9 @@ export default async function HistoryPage() {
                     {e.backdated_days > 0 && (
                       <span className="text-muted"> · backdated</span>
                     )}
+                  </p>
+                  <p className="mt-0.5 text-[12px] font-semibold text-accent">
+                    {(e.author as { full_name: string }[] | null)?.[0]?.full_name ?? "Unknown"}
                   </p>
                   <p className="mt-0.5 line-clamp-1 text-[13px] text-muted">
                     {e.progress}

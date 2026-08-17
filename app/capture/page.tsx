@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Screen, PageTitle, GroupLabel, Group } from "@/components/ui/Shell";
 import { createClient } from "@/lib/supabase/client";
 
@@ -8,6 +8,7 @@ interface Capture {
   id: string;
   body: string;
   captured_at: string;
+  photo_path: string | null;
 }
 
 function formatTime(iso: string) {
@@ -17,13 +18,42 @@ function formatTime(iso: string) {
   });
 }
 
+type MembershipResult =
+  | { ok: true; supabase: ReturnType<typeof createClient>; userId: string; projectId: string }
+  | { ok: false; error: string };
+
+async function getMembership(): Promise<MembershipResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "You need to be signed in." };
+
+  const { data: membership, error } = await supabase
+    .from("project_members")
+    .select("project_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .single();
+
+  if (error || !membership) {
+    return { ok: false, error: "No project found for your account." };
+  }
+
+  return { ok: true, supabase, userId: user.id, projectId: membership.project_id };
+}
+
 export default function CapturePage() {
   const [captures, setCaptures] = useState<Capture[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadCaptures() {
     const supabase = createClient();
@@ -32,28 +62,35 @@ export default function CapturePage() {
 
     const { data } = await supabase
       .from("captures")
-      .select("id, body, captured_at")
+      .select("id, body, captured_at, photo_path")
       .gte("captured_at", startOfDay.toISOString())
       .order("captured_at", { ascending: true });
 
-    setCaptures(data ?? []);
+    const list = data ?? [];
+    setCaptures(list);
     setLoading(false);
+
+    const photoPaths = list
+      .map((c) => c.photo_path)
+      .filter((p): p is string => p !== null);
+
+    if (photoPaths.length > 0) {
+      const { data: signed } = await supabase.storage
+        .from("captures")
+        .createSignedUrls(photoPaths, 3600);
+
+      const urls: Record<string, string> = {};
+      list.forEach((c) => {
+        const match = signed?.find((s) => s.path === c.photo_path);
+        if (match?.signedUrl) urls[c.id] = match.signedUrl;
+      });
+      setPhotoUrls(urls);
+    }
   }
 
   useEffect(() => {
-    const supabase = createClient();
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    supabase
-      .from("captures")
-      .select("id, body, captured_at")
-      .gte("captured_at", startOfDay.toISOString())
-      .order("captured_at", { ascending: true })
-      .then(({ data }) => {
-        setCaptures(data ?? []);
-        setLoading(false);
-      });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reusable fetch, also called after mutations
+    loadCaptures();
   }, []);
 
   async function handleAddNote() {
@@ -61,33 +98,16 @@ export default function CapturePage() {
     setSaving(true);
     setError(null);
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("You need to be signed in.");
+    const membership = await getMembership();
+    if (!membership.ok) {
+      setError(membership.error);
       setSaving(false);
       return;
     }
 
-    const { data: membership, error: membershipError } = await supabase
-      .from("project_members")
-      .select("project_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .single();
-
-    if (membershipError || !membership) {
-      setError("No project found for your account.");
-      setSaving(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("captures").insert({
-      project_id: membership.project_id,
-      author_id: user.id,
+    const { error: insertError } = await membership.supabase.from("captures").insert({
+      project_id: membership.projectId,
+      author_id: membership.userId,
       body: note.trim(),
     });
 
@@ -100,6 +120,48 @@ export default function CapturePage() {
     setNote("");
     setComposing(false);
     setSaving(false);
+    loadCaptures();
+  }
+
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    setError(null);
+
+    const membership = await getMembership();
+    if (!membership.ok) {
+      setError(membership.error);
+      setUploadingPhoto(false);
+      return;
+    }
+
+    const path = `${membership.projectId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await membership.supabase.storage
+      .from("captures")
+      .upload(path, file);
+
+    if (uploadError) {
+      setError(uploadError.message);
+      setUploadingPhoto(false);
+      return;
+    }
+
+    const { error: insertError } = await membership.supabase.from("captures").insert({
+      project_id: membership.projectId,
+      author_id: membership.userId,
+      photo_path: path,
+    });
+
+    if (insertError) {
+      setError(insertError.message);
+      setUploadingPhoto(false);
+      return;
+    }
+
+    setUploadingPhoto(false);
     loadCaptures();
   }
 
@@ -152,11 +214,20 @@ export default function CapturePage() {
           </button>
         )}
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoSelected}
+          className="hidden"
+        />
         <button
-          disabled
-          className="w-full cursor-not-allowed rounded-xl border border-line bg-surface py-4 text-base font-bold text-muted opacity-60"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingPhoto}
+          className="w-full rounded-xl border border-line bg-surface py-4 text-base font-bold active:scale-[0.985] transition-transform disabled:opacity-40"
         >
-          Add a photo · coming soon
+          {uploadingPhoto ? "Uploading…" : "Add a photo"}
         </button>
       </div>
 
@@ -181,7 +252,20 @@ export default function CapturePage() {
               <span className="min-w-[42px] pt-px font-mono text-[12.5px] font-semibold text-muted">
                 {formatTime(c.captured_at)}
               </span>
-              <p className="flex-1 text-[14.5px] leading-snug">{c.body}</p>
+              {c.photo_path ? (
+                photoUrls[c.id] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoUrls[c.id]}
+                    alt="Site capture"
+                    className="h-16 w-16 flex-1 grow-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-lg bg-line-soft" />
+                )
+              ) : (
+                <p className="flex-1 text-[14.5px] leading-snug">{c.body}</p>
+              )}
             </div>
           ))}
         </Group>

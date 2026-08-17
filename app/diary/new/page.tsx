@@ -91,19 +91,36 @@ export default function NewDiaryEntryPage() {
       return;
     }
 
-    const { error: insertError } = await supabase.from("diary_entries").insert({
-      project_id: membership.project_id,
-      author_id: user.id,
-      day: new Date().toISOString().slice(0, 10),
-      progress: progress.trim(),
-      flags,
-    });
+    const today = new Date().toISOString().slice(0, 10);
 
-    if (insertError) {
-      setError(insertError.message);
+    const { data: entry, error: insertError } = await supabase
+      .from("diary_entries")
+      .insert({
+        project_id: membership.project_id,
+        author_id: user.id,
+        day: today,
+        progress: progress.trim(),
+        flags,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !entry) {
+      setError(insertError?.message ?? "Could not save entry.");
       setSubmitting(false);
       return;
     }
+
+    // Roll today's unattached quick captures into this entry, so photos and
+    // notes taken from Capture show up on the entry's PDF.
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    await supabase
+      .from("captures")
+      .update({ entry_id: entry.id })
+      .eq("project_id", membership.project_id)
+      .is("entry_id", null)
+      .gte("captured_at", startOfDay.toISOString());
 
     router.push("/history");
     router.refresh();

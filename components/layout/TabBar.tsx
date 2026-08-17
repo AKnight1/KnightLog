@@ -19,7 +19,7 @@ export function TabBar() {
   const [captureBadge, setCaptureBadge] = useState(0);
 
   useEffect(() => {
-    if (path === "/login") return;
+    if (path === "/login" || path === "/signup") return;
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -31,7 +31,7 @@ export function TabBar() {
       .then(({ count }) => setCaptureBadge(count ?? 0));
   }, [path]);
 
-  if (path === "/login") return null;
+  if (path === "/login" || path === "/signup") return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-line bg-bg/95 backdrop-blur-xl px-1 pt-1.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))] md:top-0 md:bottom-auto md:w-[248px] md:flex-col md:justify-start md:border-t-0 md:border-r md:bg-surface md:px-3 md:pb-4 md:pt-5 md:gap-1">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Screen, PageTitle, GroupLabel, Group } from "@/components/ui/Shell";
 import { FLAG_LABEL, FLAG_CLASS, type Flag } from "@/lib/mock";
 import { Icon } from "@/components/icons";
@@ -37,8 +38,9 @@ export default async function HistoryPage() {
           <GroupLabel>All entries</GroupLabel>
           <Group>
             {list.map((e) => (
-              <div
+              <Link
                 key={e.id}
+                href={`/history/${e.id}`}
                 className="flex items-center gap-3 border-b border-line-soft px-4 py-3.5 last:border-b-0 active:bg-line-soft"
               >
                 <div className="min-w-0 flex-1">
@@ -70,7 +72,7 @@ export default async function HistoryPage() {
                   </span>
                 )}
                 <span className="w-[15px] text-[#C4C2BA]">{Icon.chevron}</span>
-              </div>
+              </Link>
             ))}
           </Group>
         </>

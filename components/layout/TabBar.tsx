@@ -1,19 +1,35 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
 const TABS = [
-  { href: "/", label: "Home", icon: Icon.home, badge: 0 },
-  { href: "/capture", label: "Capture", icon: Icon.bolt, badge: 2 },
-  { href: "/diary/new", label: "Diary", icon: Icon.plus, badge: 0 },
-  { href: "/history", label: "History", icon: Icon.calendar, badge: 0 },
-  { href: "/settings", label: "Settings", icon: Icon.gear, badge: 0 },
+  { href: "/", label: "Home", icon: Icon.home },
+  { href: "/capture", label: "Capture", icon: Icon.bolt },
+  { href: "/diary/new", label: "Diary", icon: Icon.plus },
+  { href: "/history", label: "History", icon: Icon.calendar },
+  { href: "/settings", label: "Settings", icon: Icon.gear },
 ];
 
 export function TabBar() {
   const path = usePathname();
+  const [captureBadge, setCaptureBadge] = useState(0);
+
+  useEffect(() => {
+    if (path === "/login") return;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    createClient()
+      .from("captures")
+      .select("id", { count: "exact", head: true })
+      .gte("captured_at", startOfDay.toISOString())
+      .then(({ count }) => setCaptureBadge(count ?? 0));
+  }, [path]);
 
   if (path === "/login") return null;
 
@@ -21,6 +37,7 @@ export function TabBar() {
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-line bg-bg/95 backdrop-blur-xl px-1 pt-1.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))] md:top-0 md:bottom-auto md:w-[248px] md:flex-col md:justify-start md:border-t-0 md:border-r md:bg-surface md:px-3 md:pb-4 md:pt-5 md:gap-1">
       {TABS.map((t) => {
         const active = t.href === "/" ? path === "/" : path.startsWith(t.href);
+        const badge = t.href === "/capture" ? captureBadge : 0;
         return (
           <Link
             key={t.href}
@@ -33,9 +50,9 @@ export function TabBar() {
             <span className="text-[9px] font-semibold md:text-[14.5px]">
               {t.label}
             </span>
-            {t.badge > 0 && (
+            {badge > 0 && (
               <span className="absolute top-0.5 right-[calc(50%-19px)] flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-signal-red px-1 text-[9.5px] font-bold text-white md:static md:ml-auto md:h-[19px] md:min-w-[20px]">
-                {t.badge}
+                {badge}
               </span>
             )}
           </Link>
